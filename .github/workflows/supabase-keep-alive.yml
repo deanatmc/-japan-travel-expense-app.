@@ -1,0 +1,35 @@
+name: Supabase Keep Alive
+
+on:
+  schedule:
+    # 每天日本／台灣時間上午 9:17 執行
+    # GitHub Actions 使用 UTC 時間
+    - cron: "17 0 * * *"
+
+  # 允許手動測試
+  workflow_dispatch:
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Query Supabase database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+
+          curl \
+            --silent \
+            --show-error \
+            --fail \
+            --max-time 30 \
+            "${SUPABASE_URL}/rest/v1/keep_alive?select=id,message,updated_at&limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}"
+
+          echo ""
+          echo "Supabase database responded successfully."
