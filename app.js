@@ -1,153 +1,85 @@
 const RATE=.21;
-let client=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let expenses=[];
+const client=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let parsedRows=[];
 
 const $=s=>document.querySelector(s);
 const yen=n=>'¥'+Number(n||0).toLocaleString();
 const nt=n=>'NT$'+Number(n||0).toLocaleString();
-const calc=n=>Math.round(Number(n||0)*RATE);
-const topup=e=>e.category==='交通儲值';
-const sum=(a,f)=>a.reduce((s,x)=>s+f(x),0);
 
-function group(a,k){return a.reduce((m,x)=>((m[x[k]]||=[]).push(x),m),{})}
-
-function setPill(state){
-  const p=$('#connectionPill');
-  p.className='pill'+(state==='ok'?' connected':state==='error'?' error':'');
-  p.textContent=state==='ok'?'已連線':state==='error'?'連線失敗':'連線中';
+function excelSerialToDate(serial){
+  const p=XLSX.SSF.parse_date_code(Number(serial));
+  if(!p)return null;
+  return new Date(Date.UTC(p.y,p.m-1,p.d,p.H||0,p.M||0,Math.floor(p.S||0)));
 }
-
-async function load(){
-  $('#status').textContent='正在讀取完整明細…';
-  setPill('loading');
-  const {data,error}=await client.from('expenses').select('*').order('date',{ascending:true}).order('created_at',{ascending:true});
-  if(error){
-    $('#status').textContent='讀取失敗：'+error.message;
-    setPill('error');
-    return;
+function toDateOnly(value){
+  if(value===null||value===undefined||value==='')return '';
+  if(value instanceof Date&&!isNaN(value))return value.toISOString().slice(0,10);
+  const s=String(value).trim();
+  if(/^\d+(\.\d+)?$/.test(s)&&Number(s)>20000){
+    const d=excelSerialToDate(Number(s));
+    return d?d.toISOString().slice(0,10):'';
   }
-  expenses=data||[];
-  $('#status').textContent=`同步完成，共 ${expenses.length} 筆明細。`;
-  setPill('ok');
-  render();
+  const d=new Date(s.replace(/\//g,'-'));
+  return !isNaN(d)?d.toISOString().slice(0,10):s.slice(0,10);
 }
-
-function renderStats(){
-  const actual=sum(expenses.filter(e=>!topup(e)),e=>+e.jpy);
-  const t=sum(expenses.filter(topup),e=>+e.jpy);
-  $('#stats').innerHTML=[
-    ['實際消費',yen(actual),'約 '+nt(calc(actual))],
-    ['含儲值總額',yen(actual+t),'約 '+nt(calc(actual+t))],
-    ['交通儲值',yen(t),'不列入實際消費'],
-    ['明細筆數',expenses.length,'一項商品一筆']
-  ].map(x=>`<div class="stat"><div class="label">${x[0]}</div><div class="value">${x[1]}</div><div class="caption">${x[2]}</div></div>`).join('');
+function toTimestamp(value){
+  if(value===null||value===undefined||value==='')return new Date().toISOString();
+  if(value instanceof Date&&!isNaN(value))return value.toISOString();
+  const s=String(value).trim();
+  if(/^\d+(\.\d+)?$/.test(s)&&Number(s)>20000){
+    const d=excelSerialToDate(Number(s));
+    return d?d.toISOString():new Date().toISOString();
+  }
+  const d=new Date(s);
+  return !isNaN(d)?d.toISOString():new Date().toISOString();
 }
-
-function filters(){
-  const d=$('#dayFilter').value,s=$('#storeFilter').value;
-  const days=[...new Set(expenses.map(e=>e.day).filter(Boolean))];
-  const stores=[...new Set(expenses.map(e=>e.store).filter(Boolean))].sort();
-  $('#dayFilter').innerHTML='<option value="">全部 Day</option>'+days.map(x=>`<option>${x}</option>`).join('');
-  $('#storeFilter').innerHTML='<option value="">全部店家</option>'+stores.map(x=>`<option>${x}</option>`).join('');
-  $('#dayFilter').value=days.includes(d)?d:'';
-  $('#storeFilter').value=stores.includes(s)?s:'';
-}
-
-function details(){
-  const q=$('#search').value.toLowerCase(),df=$('#dayFilter').value,sf=$('#storeFilter').value;
-  const data=expenses.filter(e=>{
-    const text=[e.date,e.day,e.store,e.category,e.name,e.qty,e.jpy,e.twd,e.payment,e.note,e.created_at].join(' ').toLowerCase();
-    return(!q||text.includes(q))&&(!df||e.day===df)&&(!sf||e.store===sf)
-  });
-  const html=Object.entries(group(data,'day')).map(([day,rows])=>{
-    const total=sum(rows.filter(e=>!topup(e)),e=>+e.jpy);
-    const stores=Object.entries(group(rows,'store')).map(([store,items])=>`<section class="store">
-      <div class="store-head"><h4>${store}</h4><small>${items.length} 筆｜小計 ${yen(sum(items,e=>+e.jpy))}</small></div>
-      ${items.map(e=>`<div class="item"><div><div class="name">${e.name||'(未命名商品)'}</div><div class="meta">日期：${e.date||''}｜類別：${e.category||''}｜數量：${e.qty??''}｜付款：${e.payment||''}<br>建立時間：${e.created_at?new Date(e.created_at).toLocaleString('zh-TW'):''}</div>${e.note?`<div class="note">${e.note}</div>`:''}</div><div class="money">${yen(e.jpy)}<small>${nt(e.twd??calc(e.jpy))}</small></div></div>`).join('')}
-    </section>`).join('');
-    return`<section class="day"><div class="day-head"><h3>${day||'未分類 Day'}</h3><div class="day-total">${yen(total)} / ${nt(calc(total))}</div></div>${stores}</section>`
-  }).join('');
-  $('#detailList').innerHTML=html||'<div class="empty">目前沒有符合條件的明細。</div>';
-}
-
-function render(){renderStats();filters();details()}
-
 function normalizeRow(row){
+  const jpy=Number(row['日幣']??row['jpy']??0);
   return {
-    date: row['日期'] || row['date'] || '',
-    day: row['Day'] || row['day'] || '',
-    store: row['店家'] || row['store'] || '',
-    category: row['類別'] || row['category'] || '',
-    name: row['商品名稱'] || row['name'] || '',
-    qty: row['數量'] === '' || row['數量'] == null ? null : Number(row['數量']),
-    jpy: Number(row['日幣'] || row['jpy'] || 0),
-    twd: row['台幣'] === '' || row['台幣'] == null ? calc(row['日幣'] || row['jpy'] || 0) : Number(row['台幣']),
-    payment: row['付款方式'] || row['payment'] || '',
-    note: row['備註'] || row['note'] || '',
-    created_at: row['建立時間'] || row['created_at'] || new Date().toISOString()
+    date:toDateOnly(row['日期']??row['date']??''),
+    day:row['Day']||row['day']||'',
+    store:row['店家']||row['store']||'',
+    category:row['類別']||row['category']||'',
+    name:row['商品名稱']||row['name']||'',
+    qty:(row['數量']===''||row['數量']==null)?null:Number(row['數量']),
+    jpy,
+    twd:(row['台幣']===''||row['台幣']==null)?Math.round(jpy*RATE):Number(row['台幣']),
+    payment:row['付款方式']||row['payment']||'',
+    note:row['備註']||row['note']||'',
+    created_at:toTimestamp(row['建立時間']??row['created_at']??'')
   };
 }
-
 async function previewExcel(){
   const file=$('#excelFile').files[0];
-  if(!file){
-    $('#importStatus').textContent='請先選擇 Excel 檔案。';
-    return;
-  }
-
-  const data=await file.arrayBuffer();
-  const workbook=XLSX.read(data,{type:'array'});
-  const sheet=workbook.Sheets[workbook.SheetNames[0]];
-  const json=XLSX.utils.sheet_to_json(sheet,{defval:''});
-
+  if(!file){$('#importStatus').textContent='請先選擇檔案。';return;}
+  const buf=await file.arrayBuffer();
+  const wb=XLSX.read(buf,{type:'array',cellDates:true});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const json=XLSX.utils.sheet_to_json(ws,{defval:'',raw:true});
   parsedRows=json.map(normalizeRow).filter(r=>r.date&&r.store&&r.name&&Number.isFinite(r.jpy));
-
-  if(!parsedRows.length){
-    $('#importStatus').textContent='沒有可匯入的資料，請檢查欄位名稱。';
-    $('#importBtn').disabled=true;
-    return;
-  }
-
-  $('#importStatus').textContent=`已讀取 ${parsedRows.length} 筆，請確認後寫入 Supabase。`;
-  $('#importBtn').disabled=false;
-
-  const preview=parsedRows.slice(0,10);
-  $('#previewArea').innerHTML=`<div class="preview-wrap"><table class="preview-table">
-    <thead><tr><th>日期</th><th>Day</th><th>店家</th><th>商品名稱</th><th>數量</th><th>日幣</th><th>台幣</th><th>付款</th></tr></thead>
-    <tbody>${preview.map(r=>`<tr><td>${r.date}</td><td>${r.day}</td><td>${r.store}</td><td>${r.name}</td><td>${r.qty??''}</td><td>${yen(r.jpy)}</td><td>${nt(r.twd)}</td><td>${r.payment}</td></tr>`).join('')}</tbody>
-  </table></div>`;
+  $('#importStatus').textContent=`已讀取 ${parsedRows.length} 筆，Excel 日期已轉換。`;
+  $('#importBtn').disabled=!parsedRows.length;
+  $('#previewArea').innerHTML=`<table class="preview"><thead><tr><th>日期</th><th>店家</th><th>商品</th><th>日幣</th><th>台幣</th><th>建立時間</th></tr></thead><tbody>${
+    parsedRows.slice(0,10).map(r=>`<tr><td>${r.date}</td><td>${r.store}</td><td>${r.name}</td><td>${yen(r.jpy)}</td><td>${nt(r.twd)}</td><td>${new Date(r.created_at).toLocaleString('zh-TW')}</td></tr>`).join('')
+  }</tbody></table>`;
 }
-
 async function importExcel(){
-  if(!parsedRows.length) return;
-
-  $('#importStatus').textContent=`正在寫入 ${parsedRows.length} 筆資料…`;
-
-  const chunkSize=200;
-  let inserted=0;
-
-  for(let i=0;i<parsedRows.length;i+=chunkSize){
-    const chunk=parsedRows.slice(i,i+chunkSize);
-    const {error}=await client.from('expenses').insert(chunk);
-    if(error){
-      $('#importStatus').textContent='寫入失敗：'+error.message;
-      return;
-    }
-    inserted+=chunk.length;
+  if(!parsedRows.length)return;
+  $('#importStatus').textContent=`正在寫入 ${parsedRows.length} 筆…`;
+  for(let i=0;i<parsedRows.length;i+=200){
+    const {error}=await client.from('expenses').insert(parsedRows.slice(i,i+200));
+    if(error){$('#importStatus').textContent='寫入失敗：'+error.message;return;}
   }
-
-  $('#importStatus').textContent=`匯入完成，共新增 ${inserted} 筆。`;
-  parsedRows=[];
-  $('#importBtn').disabled=true;
+  $('#importStatus').textContent=`匯入完成，共 ${parsedRows.length} 筆。`;
   await load();
 }
-
+async function load(){
+  const {data,error}=await client.from('expenses').select('*').order('date',{ascending:true});
+  if(error){$('#status').textContent='讀取失敗：'+error.message;return;}
+  $('#status').textContent=`已連線，共 ${data.length} 筆。`;
+  $('#stats').textContent=`總額：${yen(data.reduce((s,x)=>s+Number(x.jpy||0),0))}`;
+  $('#detailList').innerHTML=data.map(x=>`<div class="item"><b>${x.name}</b><span>${x.date}｜${x.store}｜數量 ${x.qty??''}</span><div class="money">${yen(x.jpy)}／${nt(x.twd??Math.round(Number(x.jpy||0)*RATE))}</div></div>`).join('');
+}
 $('#previewBtn').onclick=previewExcel;
 $('#importBtn').onclick=importExcel;
-$('#refreshBtn').onclick=load;
-$('#search').oninput=details;
-$('#dayFilter').onchange=details;
-$('#storeFilter').onchange=details;
-
 load();
