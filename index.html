@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>日本旅遊記帳 App</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<header><h1>🇯🇵 日本旅遊記帳 App</h1><p>Supabase 雲端同步版</p></header>
+<main>
+<section class="panel"><h2>Supabase 設定</h2><div class="form-grid">
+<label>Project URL<input id="supabaseUrl" placeholder="https://xxxx.supabase.co"></label>
+<label>Anon / Publishable key<input id="supabaseKey" placeholder="sb_publishable_... 或 anon key"></label>
+</div><button id="saveConfig">儲存設定</button><p class="hint">設定只保存在這支手機。不要使用 service_role key。</p></section>
+<section class="stats" id="stats"></section>
+<section class="panel"><h2>＋新增一筆消費</h2><form id="expenseForm"><div class="form-grid">
+<label>日期<input name="date" type="date" required></label><label>Day<input name="day" placeholder="Day 5" required></label>
+<label>店家<input name="store" required></label><label>類別<input name="category" required></label>
+<label>商品名稱<input name="name" required></label><label>數量<input name="qty"></label>
+<label>日幣<input name="jpy" type="number" required></label><label>付款方式<input name="payment"></label>
+</div><label>備註<textarea name="note"></textarea></label><button type="submit">寫入 Supabase</button></form></section>
+<section class="panel"><h2>一張收據多商品快速新增</h2><p class="hint">格式：商品名稱｜數量｜日幣，每行一個商品。</p><form id="bulkForm"><div class="form-grid">
+<label>日期<input name="date" type="date" required></label><label>Day<input name="day" placeholder="Day 5" required></label>
+<label>店家<input name="store" required></label><label>類別<input name="category" required></label>
+<label>付款方式<input name="payment"></label><label>備註<input name="note"></label>
+</div><textarea name="items" rows="8" placeholder="西瓜｜2｜796&#10;玉子燒｜1｜158&#10;有機豆奶｜1｜228" required></textarea><button type="submit">批次寫入 Supabase</button></form></section>
+<input id="search" placeholder="搜尋商品或店家"><div id="status" class="status"></div><section id="expenseList"></section>
+</main><script src="app.js"></script></body></html>
