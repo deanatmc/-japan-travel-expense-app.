@@ -1,1 +1,108 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>日本旅遊記帳</title><link rel="stylesheet" href="style.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body><header><h1>🇯🇵 日本旅遊記帳</h1><p>打開就能看到既有紀錄，也可同步 Supabase。</p></header><main><section class="hero"><h2>旅行支出總覽</h2><p>既有紀錄立即顯示；連線後可匯入雲端。</p></section><section id="stats" class="stats"></section><section class="card"><h2>Supabase 連線設定</h2><div class="grid"><input id="supabaseUrl" placeholder="Project URL"><input id="supabaseKey" placeholder="Publishable / Anon Key"></div><div class="buttons"><button id="saveConfig">儲存並連線</button><button id="importHistory" class="light">匯入既有紀錄到 Supabase</button></div><div id="connectionPill">尚未連線</div></section><section class="card"><h2>新增單筆消費</h2><form id="expenseForm" class="form"><input name="date" type="date" required><input name="day" placeholder="Day 5" required><input name="store" placeholder="店家" required><input name="category" placeholder="類別" required><input name="name" placeholder="商品名稱" required><input name="qty" placeholder="數量"><input name="jpy" type="number" placeholder="日幣" required><input name="payment" placeholder="付款方式"><input name="note" placeholder="備註"><button type="submit">寫入 Supabase</button></form></section><section class="card"><h2>逐條對帳明細</h2><div class="toolbar"><input id="search" placeholder="搜尋商品、店家、類別"><select id="dayFilter"><option value="">全部日期</option></select></div><div id="status">目前顯示內建既有紀錄。</div><div id="expenseList"></div></section></main><script src="historical-data.js"></script><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#4057c8">
+  <title>日本旅遊記帳</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div>
+    <div class="eyebrow">OSAKA SLOW TRIP · 2026</div>
+    <h1>日本旅遊記帳</h1>
+    <p>Supabase 雲端同步・Excel 批次匯入</p>
+  </div>
+  <div class="yen-icon">¥</div>
+</header>
+
+<main>
+  <section class="hero">
+    <div>
+      <span>CLOUD LEDGER</span>
+      <h2>旅行支出總覽</h2>
+      <p>逐條對帳、日幣台幣並列、可批次匯入 Excel。</p>
+    </div>
+  </section>
+
+  <section id="stats" class="stats"></section>
+
+  <section class="card">
+    <div class="section-title">
+      <div><small>CONNECTION</small><h2>Supabase 連線設定</h2></div>
+      <span id="connectionPill" class="pill">尚未連線</span>
+    </div>
+    <div class="grid two">
+      <label>Project URL<input id="supabaseUrl" placeholder="https://xxxx.supabase.co"></label>
+      <label>Publishable / Anon Key<input id="supabaseKey" placeholder="sb_publishable_..."></label>
+    </div>
+    <button id="saveConfig" class="primary" type="button">儲存並連線</button>
+    <p class="hint">請勿使用 service_role key。</p>
+  </section>
+
+  <section class="card accent-card">
+    <div class="section-title">
+      <div><small>EXCEL IMPORT</small><h2>匯入 Excel 記帳明細</h2></div>
+      <span class="circle">⇧</span>
+    </div>
+
+    <div class="format-box">
+      <strong>Excel 第一列欄位必須是：</strong>
+      <div class="code-line">日期｜Day｜店家｜類別｜商品名稱｜數量｜日幣｜台幣｜付款方式｜備註｜建立時間</div>
+    </div>
+
+    <div class="import-actions">
+      <label class="file-picker">
+        <span>選擇 Excel 檔案</span>
+        <input id="excelFile" type="file" accept=".xlsx,.xls,.xlsb,.csv">
+      </label>
+      <button id="downloadTemplate" class="secondary" type="button">下載 Excel 範本</button>
+      <button id="uploadExcel" class="primary" type="button" disabled>匯入到 Supabase</button>
+    </div>
+
+    <div id="excelStatus" class="status">尚未選擇檔案。</div>
+    <div id="excelPreview" class="preview"></div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">
+      <div><small>QUICK ENTRY</small><h2>新增單筆消費</h2></div>
+      <span class="circle">＋</span>
+    </div>
+    <form id="expenseForm">
+      <div class="grid four">
+        <label>日期<input name="date" type="date" required></label>
+        <label>旅程日<input name="day" placeholder="Day 5" required></label>
+        <label>店家<input name="store" placeholder="KOHYO 森之宮店" required></label>
+        <label>類別<input name="category" placeholder="超市" required></label>
+        <label class="span2">商品名稱<input name="name" required></label>
+        <label>數量<input name="qty"></label>
+        <label>日幣金額<input name="jpy" type="number" min="0" step="1" required></label>
+        <label>付款方式<input name="payment"></label>
+        <label class="span3">備註<input name="note"></label>
+      </div>
+      <button class="primary wide" type="submit">寫入 Supabase →</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="section-title">
+      <div><small>LEDGER</small><h2>逐條對帳明細</h2></div>
+      <button id="refreshBtn" class="circle button" type="button">↻</button>
+    </div>
+    <div class="toolbar">
+      <input id="search" placeholder="搜尋商品、店家、類別或付款方式">
+      <select id="dayFilter"><option value="">全部日期</option></select>
+    </div>
+    <div id="status" class="status">等待連線設定。</div>
+    <div id="expenseList"></div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
