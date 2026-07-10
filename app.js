@@ -1,4 +1,6 @@
-const RATE=0.21,CONFIG_KEY='travelExpenseSupabaseConfig_excel_v1';
+const RATE=0.21;
+const SUPABASE_URL='https://tnebopdwcrawgbjdernw.supabase.co';
+const SUPABASE_KEY='sb_publishable_c_vHmC5AiKfNJ1Qqr9eUbg_T8WzOLd3';
 const REQUIRED_HEADERS=['日期','Day','店家','類別','商品名稱','數量','日幣','台幣','付款方式','備註','建立時間'];
 let client=null,expenses=[],pendingExcelRows=[];
 const $=s=>document.querySelector(s);
@@ -8,10 +10,8 @@ const isTopup=e=>e.category==='交通儲值';
 const sum=(a,f)=>a.reduce((s,x)=>s+f(x),0);
 const groupBy=(a,k)=>a.reduce((m,x)=>((m[x[k]]||=[]).push(x),m),{});
 function status(msg,err=false,target='#status'){const el=$(target);el.textContent=msg;el.style.borderLeftColor=err?'#d9505d':'#8ca0ed'}
-function config(){try{return JSON.parse(localStorage.getItem(CONFIG_KEY)||'{}')}catch{return{}}}
-function setConnected(ok){const p=$('#connectionPill');p.textContent=ok?'已連線':'尚未連線';p.classList.toggle('connected',ok)}
-function saveConfig(){localStorage.setItem(CONFIG_KEY,JSON.stringify({url:$('#supabaseUrl').value.trim(),key:$('#supabaseKey').value.trim()}));connect()}
-function connect(){const{url,key}=config();$('#supabaseUrl').value=url||'';$('#supabaseKey').value=key||'';if(!url||!key){setConnected(false);status('請先輸入 Supabase Project URL 與 publishable / anon key。');render();return}client=supabase.createClient(url,key);loadExpenses()}
+function setConnected(ok){const p=$('#connectionPill');p.textContent=ok?'已連線':'連線失敗';p.classList.toggle('connected',ok)}
+function connect(){client=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);loadExpenses()}
 async function loadExpenses(){status('正在從 Supabase 同步資料…');const{data,error}=await client.from('expenses').select('*').order('date',{ascending:true}).order('created_at',{ascending:true});if(error){setConnected(false);status('讀取失敗：'+error.message,true);return}expenses=data||[];setConnected(true);status(`同步完成，共 ${expenses.length} 筆明細。`);render()}
 async function insertRows(rows){if(!client){status('請先完成 Supabase 連線設定。',true);return false}for(let i=0;i<rows.length;i+=500){const chunk=rows.slice(i,i+500);const{error}=await client.from('expenses').insert(chunk);if(error){status('寫入失敗：'+error.message,true);return false}}await loadExpenses();return true}
 function renderStats(){const actual=sum(expenses.filter(e=>!isTopup(e)),e=>+e.jpy),topup=sum(expenses.filter(isTopup),e=>+e.jpy);$('#stats').innerHTML=[['實際消費',yen(actual),'約 '+twd(actual)],['含儲值總額',yen(actual+topup),'約 '+twd(actual+topup)],['交通儲值',yen(topup),'不列入實際消費'],['雲端明細',expenses.length,'Supabase 即時同步']].map(x=>`<article class="stat"><div class="label">${x[0]}</div><div class="value">${x[1]}</div><div class="caption">${x[2]}</div></article>`).join('')}
@@ -28,6 +28,6 @@ function showExcelPreview(parsed){const invalid=parsed.filter(x=>x.errors.length
 $('#excelFile').addEventListener('change',async e=>{pendingExcelRows=[];$('#uploadExcel').disabled=true;$('#excelPreview').innerHTML='';const file=e.target.files[0];if(!file){status('尚未選擇檔案。',false,'#excelStatus');return}try{status('正在讀取 Excel…',false,'#excelStatus');showExcelPreview(await parseExcel(file))}catch(err){status('讀取失敗：'+err.message,true,'#excelStatus')}})
 $('#uploadExcel').addEventListener('click',async()=>{if(!pendingExcelRows.length)return;if(!client){status('請先連線 Supabase。',true,'#excelStatus');return}status(`正在匯入 ${pendingExcelRows.length} 筆…`,false,'#excelStatus');const ok=await insertRows(pendingExcelRows);if(ok){status(`成功匯入 ${pendingExcelRows.length} 筆資料。`,false,'#excelStatus');pendingExcelRows=[];$('#uploadExcel').disabled=true;$('#excelFile').value='';$('#excelPreview').innerHTML=''}})
 $('#downloadTemplate').addEventListener('click',()=>{const data=[REQUIRED_HEADERS,['2026-07-09','Day 5','KOHYO 森之宮店','超市','西瓜',2,796,167,'信用卡','晚餐食材','2026-07-09 18:30:00']];const ws=XLSX.utils.aoa_to_sheet(data);ws['!cols']=[12,10,24,16,28,10,12,12,16,24,22].map(w=>({wch:w}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'支出明細');XLSX.writeFile(wb,'日本旅遊支出匯入範本.xlsx')})
-$('#saveConfig').onclick=saveConfig;$('#refreshBtn').onclick=()=>client&&loadExpenses();$('#search').oninput=renderList;$('#dayFilter').onchange=renderList;
+$('#refreshBtn').onclick=()=>client&&loadExpenses();$('#search').oninput=renderList;$('#dayFilter').onchange=renderList;
 $('#expenseForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),jpy=+f.get('jpy'),row={date:f.get('date'),day:f.get('day'),store:f.get('store'),category:f.get('category'),name:f.get('name'),qty:numberOrNull(f.get('qty')),jpy,twd:Math.round(jpy*RATE),payment:f.get('payment'),note:f.get('note')};if(await insertRows([row]))e.target.reset()};
 render();connect();
