@@ -8,28 +8,27 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-<header><h1>日本旅遊記帳</h1><p>完整逐項明細</p></header>
+<header><h1>日本旅遊記帳</h1><p>完整逐項明細｜已預設 Supabase 連線</p></header>
 <main>
-<section class="card">
-<h2>Supabase 連線</h2>
-<div class="grid">
-<label>Project URL<input id="supabaseUrl"></label>
-<label>Publishable / Anon Key<input id="supabaseKey"></label>
-</div>
-<button id="saveConfig">儲存並連線</button>
-<div id="status">等待連線。</div>
-</section>
-
 <section id="stats" class="stats"></section>
 
 <section class="card">
-<h2>完整逐條明細</h2>
+<div class="title-row">
+  <div>
+    <div class="eyebrow">LEDGER</div>
+    <h2>完整逐條明細</h2>
+  </div>
+  <span id="connectionPill" class="pill">連線中</span>
+</div>
+
 <div class="filters">
 <input id="search" placeholder="搜尋商品、店家、類別、付款方式">
 <select id="dayFilter"><option value="">全部 Day</option></select>
 <select id="storeFilter"><option value="">全部店家</option></select>
 <button id="refreshBtn">重新整理</button>
 </div>
+
+<div id="status">正在連線 Supabase…</div>
 <div id="detailList"></div>
 </section>
 </main>

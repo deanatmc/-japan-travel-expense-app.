@@ -1,5 +1,3 @@
-這版會完整顯示每一列：
-日期、Day、店家、類別、商品名稱、數量、日幣、台幣、付款方式、備註、建立時間。
-
-注意：若 Supabase 裡某列本身是「整張收據合計」，App 無法自動拆成商品。
-要完整逐項條列，Excel 必須一個商品一列。
+此版本已預設 Supabase Project URL 與 Publishable Key。
+上傳到 GitHub Pages 後會自動連線並顯示 expenses 資料。
+請勿把 service_role key 放進前端。
