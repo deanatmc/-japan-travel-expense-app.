@@ -1,8 +1,7 @@
-const RATE=0.21;
-const SUPABASE_URL="https://tnebopdwcrawgbjdernw.supabase.co";
-const SUPABASE_KEY="sb_publishable_c_vHmC5AiKfNJ1Qqr9eUbg_T8WzOLd3";
+const RATE=.21;
 let client=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let expenses=[];
+let parsedRows=[];
 
 const $=s=>document.querySelector(s);
 const yen=n=>'¥'+Number(n||0).toLocaleString();
@@ -10,6 +9,7 @@ const nt=n=>'NT$'+Number(n||0).toLocaleString();
 const calc=n=>Math.round(Number(n||0)*RATE);
 const topup=e=>e.category==='交通儲值';
 const sum=(a,f)=>a.reduce((s,x)=>s+f(x),0);
+
 function group(a,k){return a.reduce((m,x)=>((m[x[k]]||=[]).push(x),m),{})}
 
 function setPill(state){
@@ -72,8 +72,82 @@ function details(){
 }
 
 function render(){renderStats();filters();details()}
+
+function normalizeRow(row){
+  return {
+    date: row['日期'] || row['date'] || '',
+    day: row['Day'] || row['day'] || '',
+    store: row['店家'] || row['store'] || '',
+    category: row['類別'] || row['category'] || '',
+    name: row['商品名稱'] || row['name'] || '',
+    qty: row['數量'] === '' || row['數量'] == null ? null : Number(row['數量']),
+    jpy: Number(row['日幣'] || row['jpy'] || 0),
+    twd: row['台幣'] === '' || row['台幣'] == null ? calc(row['日幣'] || row['jpy'] || 0) : Number(row['台幣']),
+    payment: row['付款方式'] || row['payment'] || '',
+    note: row['備註'] || row['note'] || '',
+    created_at: row['建立時間'] || row['created_at'] || new Date().toISOString()
+  };
+}
+
+async function previewExcel(){
+  const file=$('#excelFile').files[0];
+  if(!file){
+    $('#importStatus').textContent='請先選擇 Excel 檔案。';
+    return;
+  }
+
+  const data=await file.arrayBuffer();
+  const workbook=XLSX.read(data,{type:'array'});
+  const sheet=workbook.Sheets[workbook.SheetNames[0]];
+  const json=XLSX.utils.sheet_to_json(sheet,{defval:''});
+
+  parsedRows=json.map(normalizeRow).filter(r=>r.date&&r.store&&r.name&&Number.isFinite(r.jpy));
+
+  if(!parsedRows.length){
+    $('#importStatus').textContent='沒有可匯入的資料，請檢查欄位名稱。';
+    $('#importBtn').disabled=true;
+    return;
+  }
+
+  $('#importStatus').textContent=`已讀取 ${parsedRows.length} 筆，請確認後寫入 Supabase。`;
+  $('#importBtn').disabled=false;
+
+  const preview=parsedRows.slice(0,10);
+  $('#previewArea').innerHTML=`<div class="preview-wrap"><table class="preview-table">
+    <thead><tr><th>日期</th><th>Day</th><th>店家</th><th>商品名稱</th><th>數量</th><th>日幣</th><th>台幣</th><th>付款</th></tr></thead>
+    <tbody>${preview.map(r=>`<tr><td>${r.date}</td><td>${r.day}</td><td>${r.store}</td><td>${r.name}</td><td>${r.qty??''}</td><td>${yen(r.jpy)}</td><td>${nt(r.twd)}</td><td>${r.payment}</td></tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+async function importExcel(){
+  if(!parsedRows.length) return;
+
+  $('#importStatus').textContent=`正在寫入 ${parsedRows.length} 筆資料…`;
+
+  const chunkSize=200;
+  let inserted=0;
+
+  for(let i=0;i<parsedRows.length;i+=chunkSize){
+    const chunk=parsedRows.slice(i,i+chunkSize);
+    const {error}=await client.from('expenses').insert(chunk);
+    if(error){
+      $('#importStatus').textContent='寫入失敗：'+error.message;
+      return;
+    }
+    inserted+=chunk.length;
+  }
+
+  $('#importStatus').textContent=`匯入完成，共新增 ${inserted} 筆。`;
+  parsedRows=[];
+  $('#importBtn').disabled=true;
+  await load();
+}
+
+$('#previewBtn').onclick=previewExcel;
+$('#importBtn').onclick=importExcel;
 $('#refreshBtn').onclick=load;
 $('#search').oninput=details;
 $('#dayFilter').onchange=details;
 $('#storeFilter').onchange=details;
+
 load();

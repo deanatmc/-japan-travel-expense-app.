@@ -2,36 +2,69 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#4057c8">
 <title>日本旅遊記帳</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 </head>
 <body>
-<header><h1>日本旅遊記帳</h1><p>完整逐項明細｜已預設 Supabase 連線</p></header>
+<header>
+  <h1>日本旅遊記帳</h1>
+  <p>完整逐項明細｜Excel 匯入｜Supabase 雲端同步</p>
+</header>
+
 <main>
-<section id="stats" class="stats"></section>
+  <section class="stats" id="stats"></section>
 
-<section class="card">
-<div class="title-row">
-  <div>
-    <div class="eyebrow">LEDGER</div>
-    <h2>完整逐條明細</h2>
-  </div>
-  <span id="connectionPill" class="pill">連線中</span>
-</div>
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <div class="eyebrow">EXCEL IMPORT</div>
+        <h2>Excel 上傳</h2>
+      </div>
+      <span id="connectionPill" class="pill">連線中</span>
+    </div>
 
-<div class="filters">
-<input id="search" placeholder="搜尋商品、店家、類別、付款方式">
-<select id="dayFilter"><option value="">全部 Day</option></select>
-<select id="storeFilter"><option value="">全部店家</option></select>
-<button id="refreshBtn">重新整理</button>
-</div>
+    <div class="upload-box">
+      <input id="excelFile" type="file" accept=".xlsx,.xls,.csv">
+      <p>支援：.xlsx、.xls、.csv</p>
+    </div>
 
-<div id="status">正在連線 Supabase…</div>
-<div id="detailList"></div>
-</section>
+    <div class="button-row">
+      <button id="previewBtn" class="secondary" type="button">預覽 Excel</button>
+      <button id="importBtn" class="primary" type="button" disabled>寫入 Supabase</button>
+    </div>
+
+    <div id="importStatus" class="status">尚未選擇檔案。</div>
+    <div id="previewArea"></div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <div class="eyebrow">LEDGER</div>
+        <h2>完整逐條明細</h2>
+      </div>
+      <button id="refreshBtn" class="icon-btn" type="button">↻</button>
+    </div>
+
+    <div class="filters">
+      <input id="search" placeholder="搜尋商品、店家、類別、付款方式">
+      <select id="dayFilter"><option value="">全部 Day</option></select>
+      <select id="storeFilter"><option value="">全部店家</option></select>
+    </div>
+
+    <div id="status" class="status">正在連線 Supabase…</div>
+    <div id="detailList"></div>
+  </section>
 </main>
+
+<script>
+const SUPABASE_URL = "https://tnebopdwcrawgbjdernw.supabase.co";
+const SUPABASE_KEY = "sb_publishable_c_vHmC5AiKfNJ1Qqr9eUbg_T8WzOLd3";
+</script>
 <script src="app.js"></script>
 </body>
 </html>
