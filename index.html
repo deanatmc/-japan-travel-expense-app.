@@ -1,107 +1,37 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#4057c8">
-  <title>日本旅遊記帳</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>日本旅遊記帳</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-<header class="topbar">
-  <div>
-    <div class="eyebrow">OSAKA SLOW TRIP · 2026</div>
-    <h1>日本旅遊記帳</h1>
-    <p>Supabase 雲端同步・Excel 批次匯入</p>
-  </div>
-  <div class="yen-icon">¥</div>
-</header>
-
+<header><h1>日本旅遊記帳</h1><p>完整逐項明細｜已預設 Supabase 連線</p></header>
 <main>
-  <section class="hero">
-    <div>
-      <span>CLOUD LEDGER</span>
-      <h2>旅行支出總覽</h2>
-      <p>逐條對帳、日幣台幣並列、可批次匯入 Excel。</p>
-    </div>
-  </section>
+<section id="stats" class="stats"></section>
 
-  <section id="stats" class="stats"></section>
+<section class="card">
+<div class="title-row">
+  <div>
+    <div class="eyebrow">LEDGER</div>
+    <h2>完整逐條明細</h2>
+  </div>
+  <span id="connectionPill" class="pill">連線中</span>
+</div>
 
-  <section class="card">
-    <div class="section-title">
-      <div><small>CONNECTION</small><h2>Supabase 已預先設定</h2></div>
-      <span id="connectionPill" class="pill">連線中</span>
-    </div>
-    <div class="format-box">
-      <strong>Project URL</strong>
-      <div class="code-line">https://tnebopdwcrawgbjdernw.supabase.co</div>
-    </div>
-    <p class="hint">App 會自動連線，不需要再次輸入金鑰。</p>
-  </section>
+<div class="filters">
+<input id="search" placeholder="搜尋商品、店家、類別、付款方式">
+<select id="dayFilter"><option value="">全部 Day</option></select>
+<select id="storeFilter"><option value="">全部店家</option></select>
+<button id="refreshBtn">重新整理</button>
+</div>
 
-  <section class="card accent-card">
-    <div class="section-title">
-      <div><small>EXCEL IMPORT</small><h2>匯入 Excel 記帳明細</h2></div>
-      <span class="circle">⇧</span>
-    </div>
-
-    <div class="format-box">
-      <strong>Excel 第一列欄位必須是：</strong>
-      <div class="code-line">日期｜Day｜店家｜類別｜商品名稱｜數量｜日幣｜台幣｜付款方式｜備註｜建立時間</div>
-    </div>
-
-    <div class="import-actions">
-      <label class="file-picker">
-        <span>選擇 Excel 檔案</span>
-        <input id="excelFile" type="file" accept=".xlsx,.xls,.xlsb,.csv">
-      </label>
-      <button id="downloadTemplate" class="secondary" type="button">下載 Excel 範本</button>
-      <button id="uploadExcel" class="primary" type="button" disabled>匯入到 Supabase</button>
-    </div>
-
-    <div id="excelStatus" class="status">尚未選擇檔案。</div>
-    <div id="excelPreview" class="preview"></div>
-  </section>
-
-  <section class="card">
-    <div class="section-title">
-      <div><small>QUICK ENTRY</small><h2>新增單筆消費</h2></div>
-      <span class="circle">＋</span>
-    </div>
-    <form id="expenseForm">
-      <div class="grid four">
-        <label>日期<input name="date" type="date" required></label>
-        <label>旅程日<input name="day" placeholder="Day 5" required></label>
-        <label>店家<input name="store" placeholder="KOHYO 森之宮店" required></label>
-        <label>類別<input name="category" placeholder="超市" required></label>
-        <label class="span2">商品名稱<input name="name" required></label>
-        <label>數量<input name="qty"></label>
-        <label>日幣金額<input name="jpy" type="number" min="0" step="1" required></label>
-        <label>付款方式<input name="payment"></label>
-        <label class="span3">備註<input name="note"></label>
-      </div>
-      <button class="primary wide" type="submit">寫入 Supabase →</button>
-    </form>
-  </section>
-
-  <section class="card">
-    <div class="section-title">
-      <div><small>LEDGER</small><h2>逐條對帳明細</h2></div>
-      <button id="refreshBtn" class="circle button" type="button">↻</button>
-    </div>
-    <div class="toolbar">
-      <input id="search" placeholder="搜尋商品、店家、類別或付款方式">
-      <select id="dayFilter"><option value="">全部日期</option></select>
-    </div>
-    <div id="status" class="status">等待連線設定。</div>
-    <div id="expenseList"></div>
-  </section>
+<div id="status">正在連線 Supabase…</div>
+<div id="detailList"></div>
+</section>
 </main>
-
 <script src="app.js"></script>
 </body>
 </html>
